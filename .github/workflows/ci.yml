@@ -4,16 +4,73 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      ios:
+        description: "Also compile the iOS targets on macOS (uses costly macOS minutes)"
+        type: boolean
+        default: false
 
+# One run per branch/PR; a new push cancels the previous run.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
-  check:
-    name: Check (Linux)
+  build:
+    name: Build and test (Linux)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Gradle wrapper is committed
+        run: |
+          test -f gradlew || {
+            echo "::error::gradlew is missing. Run 'gradle wrapper --gradle-version 9.1.0' and commit the result."
+            exit 1
+          }
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # Caches Gradle dependencies and build outputs.
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Tests and module boundary check
+        run: ./gradlew check --stacktrace
+
+      - name: Assemble Android debug APK
+        run: ./gradlew :androidApp:assembleDebug --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: androidApp-debug-apk
+          path: androidApp/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+
+      - name: Upload reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-reports
+          path: |
+            **/build/reports/
+            **/build/test-results/
+          if-no-files-found: ignore
+
+  # Manual only for now: compiles the Apple targets. Full iOS packaging and signing comes in phase 6.
+  ios-compile:
+    name: Compile iOS targets (macOS)
+    if: github.event_name == 'workflow_dispatch' && inputs.ios
+    runs-on: macos-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -21,7 +78,5 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
-      - name: Run checks
-        run: ./gradlew check --stacktrace
-
-  # Phase 6: add a macOS job for iOS targets and fastlane.
+      - name: Compile iOS simulator target
+        run: ./gradlew compileKotlinIosSimulatorArm64 --stacktrace
