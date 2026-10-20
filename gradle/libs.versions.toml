@@ -1,0 +1,15 @@
+# Version compatibility source of truth:
+# https://kotlinlang.org/docs/multiplatform/multiplatform-compatibility-guide.html
+#   Kotlin 2.3.20-2.3.21 -> Gradle 7.6.3-9.3.0, AGP 8.2.2-9.0.0
+#   AGP 9.0 requires Gradle >= 9.1.0 and JDK 17+.
+[versions]
+kotlin = "2.3.21"
+agp = "9.0.0"
+androidCompileSdk = "36"
+androidMinSdk = "26"
+androidTargetSdk = "36"
+
+[libraries]
+# Only used by build-logic, so the convention plugins can apply these plugins.
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
