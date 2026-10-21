@@ -42,8 +42,8 @@ val verifyModuleBoundaries by tasks.registering {
                 .flatMap { it.dependencies.withType(ProjectDependency::class.java) }
                 .map { it.path }
                 .toSet()
-                .filter { it !in allowed }
-                .forEach { violations += "${module.path} must not depend on $it" }
+                .filter { it != module.path && it !in allowed }
+		.forEach { violations += "${module.path} must not depend on $it" }
         }
         if (violations.isNotEmpty()) {
             throw GradleException(
