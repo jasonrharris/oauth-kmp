@@ -23,6 +23,9 @@ Generate the Gradle wrapper (jar and scripts are not committed by the scaffold):
 Ports (interfaces) live in `core:oauth`. Every other module is an adapter or consumer.
 The allowed dependencies are declared in the root `build.gradle.kts` and enforced by `check`.
 
+## License
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
 ## Roadmap
 1. Scaffold (this)  2. Core logic  3. Contract + network  4. Storage
 5. Android end to end  6. iOS end to end  7. Web  8. Hardening
