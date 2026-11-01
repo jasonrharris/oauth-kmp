@@ -1,5 +1,7 @@
 package com.baloomba.oauth.core.oauth
 
+import kotlin.jvm.JvmInline
+
 @JvmInline
 public value class ProviderId private constructor(public val value: String) {
     public companion object {

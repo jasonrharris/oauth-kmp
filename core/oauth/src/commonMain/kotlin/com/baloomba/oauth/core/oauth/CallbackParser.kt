@@ -16,7 +16,7 @@ public object CallbackParser {
             if (pair.isEmpty()) continue
             val key = UrlEncoding.decode(pair.substringBefore('=')) ?: return CallbackResult.Malformed
             val value = UrlEncoding.decode(pair.substringAfter('=', "")) ?: return CallbackResult.Malformed
-            params.putIfAbsent(key, value)
+            if (key !in params) params[key] = value
         }
 
         val error = params["error"]
