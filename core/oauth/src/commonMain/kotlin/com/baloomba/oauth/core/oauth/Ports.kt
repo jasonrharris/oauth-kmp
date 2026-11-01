@@ -4,9 +4,16 @@ import com.baloomba.oauth.core.backendcontract.TokenSet
 
 /** Port: cryptographically secure randomness. Implemented in `core:crypto`. */
 public interface SecureRandom {
+    /** Returns [n] cryptographically secure random bytes. */
     public fun bytes(n: Int): ByteArray
 
-    /** Returns [length] characters drawn uniformly from [alphabet]. */
+    /**
+     * Returns [length] characters drawn uniformly from [alphabet].
+     *
+     * Implementations MUST use rejection sampling (discard random values at or above the
+     * largest multiple of `alphabet.length` that fits the sampled range) rather than a plain
+     * modulo, which biases the distribution when the alphabet size does not divide the range.
+     */
     public fun string(length: Int, alphabet: String): String
 }
 
