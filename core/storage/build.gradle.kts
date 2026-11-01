@@ -5,8 +5,12 @@ plugins {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation(project(":core:oauth"))
-            implementation(project(":core:backend-contract"))
+            api(project(":core:oauth"))
+            api(project(":core:backend-contract"))
+            implementation(libs.kotlinx.coroutines.core)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }
