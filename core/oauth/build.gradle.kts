@@ -7,5 +7,8 @@ kotlin {
         commonMain.dependencies {
             api(project(":core:backend-contract"))
         }
+        commonTest.dependencies {
+            implementation(libs.kotlinx.coroutines.test)
+        }
     }
 }

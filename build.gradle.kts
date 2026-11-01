@@ -2,6 +2,7 @@ import org.gradle.api.artifacts.ProjectDependency
 
 plugins {
     base
+    alias(libs.plugins.kotlin.serialization) apply false
 }
 
 /**
