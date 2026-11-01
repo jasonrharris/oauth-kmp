@@ -9,7 +9,7 @@ androidCompileSdk = "36"
 androidMinSdk = "26"
 androidTargetSdk = "36"
 ktor = "3.6.1"
-kotlinxSerialization = "1.12.0"
+kotlinxSerialization = "1.11.0"
 kotlinxCoroutines = "1.11.0"
 
 [libraries]
