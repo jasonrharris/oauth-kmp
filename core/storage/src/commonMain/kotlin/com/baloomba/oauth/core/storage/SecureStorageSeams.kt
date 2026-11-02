@@ -3,10 +3,12 @@ package com.baloomba.oauth.core.storage
 import com.baloomba.oauth.core.oauth.ProviderId
 
 /**
- * Authenticated encryption seam. Platform adapters (Tink on Android) implement it.
+ * Encryption seam. Platform adapters implement it: Tink AEAD on Android (authenticated encryption), and
+ * [AssociatedDataBoundCipher] on iOS (no cryptography; at-rest protection comes from the Keychain).
  *
- * [decrypt] MUST throw when the ciphertext is corrupted, was produced for different
- * [associatedData], or cannot be decrypted for any other reason.
+ * [decrypt] MUST throw when the ciphertext was produced for different [associatedData]. An AEAD
+ * implementation also throws on corrupted ciphertext; the iOS implementation does not authenticate, so
+ * corruption there surfaces when the plaintext is decoded, which the stores treat as an absent entry.
  */
 internal interface BlobCipher {
     fun encrypt(plaintext: ByteArray, associatedData: ByteArray): ByteArray

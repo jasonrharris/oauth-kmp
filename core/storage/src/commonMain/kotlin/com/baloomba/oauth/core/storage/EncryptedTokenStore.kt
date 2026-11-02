@@ -8,7 +8,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 
 /**
- * [TokenStore] that persists AEAD-encrypted [TokenSet]s in a [BlobStore].
+ * [TokenStore] that persists encrypted [TokenSet]s in a [BlobStore] through a [BlobCipher].
  * A corrupted or undecryptable entry is treated as absent and removed.
  */
 internal class EncryptedTokenStore(

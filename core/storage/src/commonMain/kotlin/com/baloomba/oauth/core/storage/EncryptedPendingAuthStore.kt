@@ -28,7 +28,7 @@ internal class PendingAuthorizationDto(
 }
 
 /**
- * [PendingAuthStore] that persists AEAD-encrypted sessions in a [BlobStore].
+ * [PendingAuthStore] that persists encrypted sessions in a [BlobStore] through a [BlobCipher].
  * [take] is an atomic read-and-delete: the entry is removed before it is decrypted, so a
  * corrupted entry is also consumed and a verifier can never be used twice.
  */
