@@ -26,6 +26,8 @@ public sealed interface AuthFailure {
     public data class ProviderDenied(val error: String) : AuthFailure
     public data class ExchangeRejected(val code: BackendErrorCode) : AuthFailure
     public data class Network(val cause: Throwable) : AuthFailure
+    /** The exchange succeeded but the tokens could not be persisted. The pending session is already consumed. */
+    public data class Storage(val cause: Throwable) : AuthFailure
 }
 
 public class OAuthClient(
@@ -85,7 +87,8 @@ public class OAuthClient(
         if (session == null || session.state != callback.state) {
             return AuthOutcome.Failed(AuthFailure.StateMismatch)
         }
-        if (clock.now() - session.createdAt > sessionTtl) {
+        val age = clock.now() - session.createdAt
+        if (age.isNegative() || age > sessionTtl) {
             return AuthOutcome.Failed(AuthFailure.SessionExpired)
         }
         if (registry.get(session.provider) == null) {
@@ -110,7 +113,13 @@ public class OAuthClient(
         return when (result) {
             is ExchangeResult.Rejected -> AuthOutcome.Failed(AuthFailure.ExchangeRejected(result.code))
             is ExchangeResult.Ok -> {
-                tokens.save(session.provider, result.response.tokens)
+                try {
+                    tokens.save(session.provider, result.response.tokens)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    return AuthOutcome.Failed(AuthFailure.Storage(e))
+                }
                 AuthOutcome.Authenticated(session.provider, result.response.tokens)
             }
         }

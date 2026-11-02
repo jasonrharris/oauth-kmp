@@ -68,4 +68,16 @@ class CallbackParserTest {
             CallbackParser.parse("app://cb?flag&code=a&state=b#frag"),
         )
     }
+
+    // S-CB-7
+    @Test
+    fun duplicatedParametersAreMalformed() {
+        listOf(
+            "app://cb?code=a&code=b&state=s",
+            "app://cb?code=a&state=s&state=t",
+            "app://cb?code=a&state=s&state=s",
+            "app://cb?error=x&error=y",
+            "app://cb?code=a&state=s&error=x&error=y",
+        ).forEach { assertEquals(CallbackResult.Malformed, CallbackParser.parse(it), it) }
+    }
 }

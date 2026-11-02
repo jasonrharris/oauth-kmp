@@ -122,6 +122,68 @@ class OAuthClientTest {
         assertEquals(emptyList(), api.requests)
     }
 
+    // S-FLOW-8b: clock moving backwards must not bypass the TTL
+    @Test
+    fun clockGoingBackwardsExpiresSessionAndDeletesIt() = runTest {
+        launcher.result = LaunchResult.Redirecting
+        val c = client()
+        c.signIn(spotify)
+        clock.advance((-1).minutes)
+        assertEquals(AuthOutcome.Failed(AuthFailure.SessionExpired), c.resume(callbackFor()))
+        assertEquals(emptyMap(), pending.sessions)
+        assertEquals(emptyList(), api.requests)
+    }
+
+    // S-FLOW-8c: token store failure on save is a failure outcome, session already consumed
+    @Test
+    fun tokenStoreSaveFailureIsStorageFailureNotException() = runTest {
+        launcher.result = LaunchResult.Redirecting
+        val boom = IllegalStateException("disk full")
+        val failingStore = object : TokenStore {
+            override suspend fun save(provider: ProviderId, tokens: TokenSet) = throw boom
+            override suspend fun load(provider: ProviderId): TokenSet? = null
+            override suspend fun clear(provider: ProviderId) {}
+        }
+        val c = OAuthClient(
+            registry = InMemoryProviderRegistry(listOf(testConfig())),
+            requests = AuthorizationRequestFactory(PkceGenerator(random, FakeSha256()), random, clock),
+            pending = pending,
+            launcher = launcher,
+            exchange = api,
+            tokens = failingStore,
+            redirectUri = redirect,
+            clock = clock,
+        )
+        c.signIn(spotify)
+        val outcome = c.resume(callbackFor())
+        val failed = assertIs<AuthOutcome.Failed>(outcome)
+        assertEquals(boom, assertIs<AuthFailure.Storage>(failed.reason).cause)
+        assertEquals(emptyMap(), pending.sessions)
+    }
+
+    // S-FLOW-8d: cancellation from token store is not swallowed
+    @Test
+    fun tokenStoreCancellationIsNotSwallowed() = runTest {
+        launcher.result = LaunchResult.Redirecting
+        val failingStore = object : TokenStore {
+            override suspend fun save(provider: ProviderId, tokens: TokenSet) = throw CancellationException("c")
+            override suspend fun load(provider: ProviderId): TokenSet? = null
+            override suspend fun clear(provider: ProviderId) {}
+        }
+        val c = OAuthClient(
+            registry = InMemoryProviderRegistry(listOf(testConfig())),
+            requests = AuthorizationRequestFactory(PkceGenerator(random, FakeSha256()), random, clock),
+            pending = pending,
+            launcher = launcher,
+            exchange = api,
+            tokens = failingStore,
+            redirectUri = redirect,
+            clock = clock,
+        )
+        c.signIn(spotify)
+        assertFailsWith<CancellationException> { c.resume(callbackFor()) }
+    }
+
     // S-FLOW-9
     @Test
     fun sessionJustInsideTtlIsAccepted() = runTest {

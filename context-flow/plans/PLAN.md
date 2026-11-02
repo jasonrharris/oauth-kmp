@@ -1,6 +1,6 @@
 # KMP Plan: Provider-Agnostic OAuth Client (Backend Token Exchange)
 
-Status: Phases 1 (scaffold), 2 (core logic) and 3 (contract and network) done.
+Status: Phases 1 (scaffold), 2 (core logic) and 3 (contract and network) done. Phase 4 (storage) partially done: in-memory and Android secure storage done, iOS Keychain adapter written but unverified.
 
 ## 1. Goals and constraints
 
@@ -208,11 +208,11 @@ sealed interface ExchangeResult {
 | | Android | iOS | Web |
 |---|---|---|---|
 | Crypto (`core:crypto`) | cryptography-kotlin (or JCA) | cryptography-kotlin (CryptoKit-backed) | cryptography-kotlin (WebCrypto) |
-| Pending store (`core:storage`) | EncryptedSharedPreferences | Keychain | `sessionStorage` |
-| Token store (`core:storage`) | EncryptedSharedPreferences | Keychain | in-memory, or backend-set `HttpOnly` cookie |
+| Pending store (`core:storage`) | Tink AES-256-GCM, master key in Android Keystore (`EncryptedSharedPreferences` / `security-crypto` is deprecated, not used) | Keychain | `sessionStorage` |
+| Token store (`core:storage`) | Tink AES-256-GCM, master key in Android Keystore (same adapter) | Keychain | in-memory, or backend-set `HttpOnly` cookie |
 | Launcher (`platform:browser`) | Custom Tabs, then deep link into `resume` | `ASWebAuthenticationSession` | `location.assign()`, returns `Redirecting` |
 
-Prefer an existing multiplatform secure-storage library over writing three implementations. Verify its maintenance status before adopting it, and hide it behind the port so it can be swapped.
+Secure storage is implemented in-house behind the `PendingAuthStore` and `TokenStore` ports (decision: no third-party KMP storage library). Encryption and corruption handling live in common code behind small internal seams (`BlobCipher`, `BlobStore`) and are tested on the JVM with fakes; each platform only supplies a thin adapter (Android: Tink 1.24.0 `AndroidKeysetManager` plus private SharedPreferences; iOS: Keychain generic-password items via `platform.Security`, `AfterFirstUnlockThisDeviceOnly`, no iCloud sync, written; type-checked with kotlinc-native but not linked, run or tested on a simulator/device; the Android adapter is uncompiled, no SDK).
 
 ## 6. Backend contract (`core:backend-contract`) and network (`core:network`)
 
@@ -312,7 +312,7 @@ The Ktor implementation of `TokenExchangeApi` takes `baseUrl` as a constructor a
 | 1 | **Scaffold.** Version catalog, convention plugins, empty modules, module boundary check, CI on Linux, Gradle wrapper. | Done (verify first green CI run) |
 | 2 | **Core logic.** `core:oauth` and ports, PKCE, URL building, callback parsing, `OAuthClient` state machine, `core:crypto` interfaces and fakes, full unit tests. Delete the smoke test. | Done (JVM tests green; `core:crypto` has no adapters yet, fakes live in `core:oauth` commonTest; real adapters need a crypto library decision) |
 | 3 | **Contract and network.** DTOs, `TokenExchangeApi` over Ktor, MockEngine tests. Backend changes from section 8 in parallel. | Done (Go backend changes from section 8 are outside this repo) |
-| 4 | **Storage.** In-memory fake first, then Android and iOS secure implementations. | |
+| 4 | **Storage.** In-memory fake first, then Android and iOS secure implementations. | Partially done: in-memory stores and Android Tink/Keystore adapter done (adapter not yet compiled or run, needs Android SDK/CI/device); iOS Keychain adapter (`IosSecureStorage`) written and type-checked with kotlinc-native but not linked, run or tested on a simulator/device |
 | 5 | **Android end to end.** Custom Tabs launcher, deep link, Compose UI. Prove the full flow against the local Go server. | |
 | 6 | **iOS end to end.** `ASWebAuthenticationSession` launcher, Xcode host project, macOS CI job, fastlane. | |
 | 7 | **Web.** Redirect launcher and the `resume` path. Decide Compose for Web versus logic-only sharing. | |
@@ -323,7 +323,8 @@ The Ktor implementation of `TokenExchangeApi` takes `baseUrl` as a constructor a
 - Web UI technology (Compose for Web versus logic-only sharing), to settle before phase 7.
 - Token handling on web (HttpOnly cookie versus in-memory).
 - Where provider configs live long term: bundled in the app or fetched from the backend.
-- Which secure-storage and crypto libraries to adopt (verify maintenance and current versions at phase 2 and 4).
+- Crypto libraries for `core:crypto` adapters (decide at phase 5/6).
+- ~~Secure storage library~~ Resolved: in-house adapters behind the ports; Android uses Google Tink (`tink-android` 1.24.0, actively maintained) with Android Keystore. `EncryptedSharedPreferences` is deprecated and excluded. iOS uses the Keychain directly.
 
 ## 14. Environment notes
 
